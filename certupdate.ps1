@@ -1,29 +1,53 @@
 
-
-
-
 param(
-    [String]$sourcefolder=""
-    )
+    [String]$key,    
+    [String]$certificate,
+    [String]$pass
+    );
 
+    $certificate = "alldomains-02-2-4-2019\fullchain1.pem"
+    $key = "alldomains-02-2-4-2019\privkey1.pem"
+    $pass = "secret"
 
-$sourcefolder = "alldomains-02-2-4-2019"
+function Add-NewSSLCert($pfxPath, $pass){
+    function Set-CertificatePermission ($pfxThumbPrint, $account) {
 
-$pass = "secret"
-$certname = "fullchain1.pem"
-$keyname = "privkey1.pem"
+        $cert = Get-ChildItem -Path cert:\LocalMachine\My | Where-Object -FilterScript { $PSItem.ThumbPrint -eq $pfxThumbPrint; };    
+        $accessRule = New-Object -TypeName System.Security.AccessControl.FileSystemAccessRule -ArgumentList $account,"Read,FullControl","Allow";
+        $keyFullPath = "$env:ProgramData\Microsoft\Crypto\RSA\MachineKeys\$($cert.PrivateKey.CspKeyContainerInfo.UniqueKeyContainerName)"
 
-openssl pkcs12 -export -out "$sourcefolder\ssl.pfx" -inkey "$sourcefolder\$keyname" -in "$sourcefolder\$certname" -password pass:$pass
-#$thumbprint = ((openssl x509 -in "$sourcefolder\$certname" -fingerprint -noout).Split("=")[1]).Replace(":","")
+        $acl = Get-Acl -Path $keyFullPath
+        $acl.SetAccessRule($accessRule)
+        Set-Acl -Path $keyFullPath -AclObject $acl;
+    }
+    function Import-SSLCert($pfxFilePath, $pfxPass){    
+        
+        $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet -bor `
+                 [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet -bor `
+                 [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable;
+        
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+        $cert.Import($pfxFilePath, $pfxPass, $flags)
+                
+        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store -ArgumentList "MY", LocalMachine
+        $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::"ReadWrite")
+        $store.Add($cert)
+        $store.Close()
+        return $cert.Thumbprint
+    }
 
-$thumbprint = (Import-PfxCertificate `
-                -FilePath $sourcefolder\ssl.pfx `
-                -CertStoreLocation Cert:\CurrentUser\My `
-                -Password ($pass | convertto-securestring -asplaintext -force) `
-                -Exportable).Thumbprint
+    $thumbprint = Import-SSLCert $pfxPath $pass
+    Set-CertificatePermission $thumbprint "Everyone"
+}
+function Convert-PEMtoPFX($key, $certificate, $pass){
+    $key = (Resolve-Path $key).Path
+    $certificate = (Resolve-Path $certificate).Path   
+    $pfxPath = $certificate.Replace("pem","pfx")
+    openssl pkcs12 -export -out $pfxPath -inkey $key -in $certificate -password pass:$pass
+    return $pfxPath
+}
 
+$pfxPath = Convert-PEMtoPFX $key $certificate $pass
+Add-NewSSLCert $pfxPath $pass
 
-
-Write-Host ""
-
-
+    
