@@ -6,7 +6,22 @@ param(
     [String]$serviceAccount
 );
 
-function Write-Info  ($msg, $color) { Write-LogEntry $msg $color "INFO" }
+try{
+Stop-Transcript
+}catch{}
+Start-Transcript -Append "$PSscriptroot\out.log"
+
+function Write-Info() { 
+    
+    [cmdletbinding()]
+    param(
+        [parameter(ValueFromPipeline)]
+        [String]$msg,    
+        [String]$color
+    );
+
+    Write-LogEntry $msg $color "INFO" 
+}
 function Write-Warn  ($msg, $color) { Write-LogEntry $msg "darkyellow" "WARN" }
 function Write-Error ($msg, $color) {        
     try {
@@ -16,12 +31,10 @@ function Write-Error ($msg, $color) {
     exit
 }
 
-
 function Write-LogEntry($msg, $color, $level){  
     $color = if ($color) {$color} else {"white"}
     $entry = (Get-Date).toString("yyyy-mm-dd HH:mm:ss ") + "[ $level ] [ $([System.Net.Dns]::GetHostName()) ] ::: " + $msg  
     Write-Host $entry -ForegroundColor $color     
-    $entry | Out-File 'ssl_update.log' -Append
      [Console]::Out.Flush()
 }
 
@@ -147,7 +160,7 @@ function Set-NewSSLCert($thumbprint){
         $cert | Set-Item -Path 'IIS:\SSLBindings\*!443'
 
         Write-Info "Restart IIS"
-        IISRESET /restart
+        IISRESET /restart | Write-Info
 
         Write-Info "IIS certificate installed successfully!!" "green"
     }
@@ -193,8 +206,12 @@ Write-Info "Service account: $serviceAccount"
 Write-Info "PFX password: $pass"
 Write-Section "Begin update" "green"
 
-$pfxPath = Convert-PEMtoPFX -k $key -c $certificate -p $pass
-$thumbprint = Add-NewSSLCert -pfx $pfxPath -pass $pass -s $serviceAccount
-Set-NewSSLCert $thumbprint
+function main() {
+    $pfxPath = Convert-PEMtoPFX -k $key -c $certificate -p $pass
+    $thumbprint = Add-NewSSLCert -pfx $pfxPath -pass $pass -s $serviceAccount
+    Set-NewSSLCert $thumbprint
+}
 
+main
 
+Stop-Transcript
