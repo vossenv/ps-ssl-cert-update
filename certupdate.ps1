@@ -6,7 +6,6 @@ param(
     [String]$serviceAccount
 );
 
-#$key=
 function Write-Info  ($msg, $color) { Write-LogEntry $msg $color "INFO" }
 function Write-Warn  ($msg, $color) { Write-LogEntry $msg "darkyellow" "WARN" }
 function Write-Error ($msg, $color) {        
@@ -198,10 +197,3 @@ $thumbprint = Add-NewSSLCert -pfx $pfxPath -pass $pass -s $serviceAccount
 Set-NewSSLCert $thumbprint
 
 
-
-
-
-
-# Stop-Process -name "Microsoft.IdentityServer.ServiceHost" -Force
-# Start-Sleep 5
-# Start-Service ADFSSRV
