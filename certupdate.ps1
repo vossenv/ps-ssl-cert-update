@@ -22,6 +22,7 @@ function Write-LogEntry($msg, $color, $level){
     $entry = (Get-Date).toString("yyyy-mm-dd HH:mm:ss ") + "[ $level ] [ $([System.Net.Dns]::GetHostName()) ] ::: " + $msg  
     Write-Host $entry -ForegroundColor $color     
     $entry | Out-File 'ssl_update.log' -Append
+     [Console]::Out.Flush()
 }
 
 function Write-Section($msg, $color){
