@@ -7,8 +7,9 @@ param(
 );
 
 try{
-Stop-Transcript
+    Stop-Transcript
 }catch{}
+
 Start-Transcript -Append "$PSscriptroot\out.log"
 
 function Write-Info() { 
