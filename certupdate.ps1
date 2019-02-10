@@ -2,8 +2,8 @@
 param(
     [String]$key,    
     [String]$certificate,
-    [String]$pass="secret",
-    [String]$serviceAccount
+    [String]$pass="carag",
+    [String]$serviceAccount="Everyone"
 );
 
 try{
@@ -50,7 +50,7 @@ $admin = ([Security.Principal.WindowsPrincipal] `
           [Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $admin){Write-Error "Please re-run as administrator... "; exit}
-if (-not $key){Write-Error "Error: missing private key path (-key)... "; exit}
+#f (-not $key){Write-Error "Error: missing private key path (-key)... "; exit}
 if (-not $certificate){ Write-Error "Missing certificate path (-cert)... "; exit}
 $ErrorActionPreference = "Stop"
 
@@ -208,8 +208,9 @@ Write-Info "PFX password: $pass"
 Write-Section "Begin update" "green"
 
 function main() {
-    $pfxPath = Convert-PEMtoPFX -k $key -c $certificate -p $pass
-    $thumbprint = Add-NewSSLCert -pfx $pfxPath -pass $pass -s $serviceAccount
+
+    $pfxpath = if ($key) {Convert-PEMtoPFX -k $key -c $certificate -p $pass} else {$certificate}    
+    $thumbprint = Add-NewSSLCert -pfx $pfxpath -pass $pass -s $serviceAccount
     Set-NewSSLCert $thumbprint
 }
 
